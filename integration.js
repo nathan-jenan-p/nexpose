@@ -35,6 +35,8 @@ function doLookup(entities, options, callback) {
         match: "any"
     };
 
+    Logger.trace('request body is: ', requestBody);
+
     requestWithDefaults(
         {
             url: `${options.url}/api/3/assets/search`,
