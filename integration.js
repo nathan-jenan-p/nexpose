@@ -19,6 +19,15 @@ function handleRequestError(request) {
     };
 }
 
+function allEmptyResults(entities) {
+    return entities.map(entity => {
+        return {
+            entity: entity,
+            data: null
+        };
+    });
+}
+
 function doLookup(entities, options, callback) {
     Logger.trace('options are', options);
 
@@ -50,7 +59,8 @@ function doLookup(entities, options, callback) {
         }, 200, (err, body) => {
             if (err) {
                 Logger.error('error during lookup', err);
-                callback(err);
+                // FIXME return error not an empty result
+                callback(null, allEmptyResults(entities));
                 return;
             }
 
@@ -85,7 +95,11 @@ function doLookup(entities, options, callback) {
                 }
             });
 
-            callback(null, results);
+            if (results.length === 0) {
+                callback(null, allEmptyResults(entities));
+            } else {
+                callback(null, results);
+            }
         });
 }
 
