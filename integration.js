@@ -44,63 +44,94 @@ function doLookup(entities, options, callback) {
         match: "any"
     };
 
-    Logger.trace('request body is: ', requestBody);
+    let ro = {
+        url: `${options.url}/api/3/assets/search`,
+        method: 'POST',
+        auth: {
+            user: options.username,
+            password: options.password
+        },
+        body: requestBody,
+        json: true
+    };
 
-    requestWithDefaults(
-        {
-            url: `${options.url}/api/3/assets/search`,
-            method: 'POST',
-            auth: {
-                user: options.username,
-                password: options.password
-            },
-            body: requestBody,
-            json: true
-        }, 200, (err, body) => {
+    Logger.trace('request options are: ', ro);
+
+    requestWithDefaults(ro, 200, (err, body) => {
+        if (err) {
+            Logger.error('error during lookup', err);
+            callback(null, err);
+            return;
+        }
+
+        let resourcesByIP = {};
+
+        body.resources.forEach(resource => {
+            resourcesByIP[resource.ip] = resource;
+        });
+
+        let results = [];
+
+        entities.forEach(entity => {
+            let resource = resourcesByIP[entity.value];
+            if (!!resource) {
+                results.push({
+                    entity: entity,
+                    data: {
+                        summary: [
+                            `Critical: ${resource.vulnerabilities.critical}`,
+                            `Severe: ${resource.vulnerabilities.severe}`,
+                            `Exploits: ${resource.vulnerabilities.exploits}`,
+                            `Services: ${resource.services.reduce((prev, next) => prev + ', ' + next.name, '')}`
+                        ],
+                        details: resource
+                    }
+                });
+            } else {
+                results.push({
+                    entity: entity,
+                    data: null
+                });
+            }
+        });
+
+        callback(null, results);
+    });
+}
+
+function onDetails(entity, options, callback) {
+    let ro = {
+        url: `${options.url}/api/3/tags`,
+        auth: {
+            user: options.username,
+            password: options.password
+        },
+        json: true
+    };
+
+    Logger.trace('request options are: ', ro);
+
+    requestWithDefaults(ro, 200, (err, body) => {
+        if (err) {
+            callback(err);
+            return;
+        }
+
+        entity.data.details.availableTags = body.resources;
+
+        ro.url = `${options.url}/api/3/assets/${entity.data.details.id}/tags`;
+
+        requestWithDefaults(ro, 200, (err, body) => {
             if (err) {
-                Logger.error('error during lookup', err);
-                // FIXME return error not an empty result
-                callback(null, allEmptyResults(entities));
+                callback(err);
                 return;
             }
 
-            let resourcesByIP = {};
+            entity.data.details.appliedTags = body.resources;
 
-            body.resources.forEach(resource => {
-                resourcesByIP[resource.ip] = resource;
-            });
-
-            let results = [];
-
-            entities.forEach(entity => {
-                let resource = resourcesByIP[entity.value];
-                if (!!resource) {
-                    results.push({
-                        entity: entity,
-                        data: {
-                            summary: [
-                                `Critical: ${resource.vulnerabilities.critical}`,
-                                `Severe: ${resource.vulnerabilities.severe}`,
-                                `Exploits: ${resource.vulnerabilities.exploits}`,
-                                `Services: ${resource.services.reduce((prev, next) => prev + ', ' + next.name, '')}`
-                            ],
-                            details: resource
-                        }
-                    });
-                } else {
-                    results.push({
-                        entity: entity,
-                        data: null
-                    });
-                }
-            });
-
-            if (results.length === 0) {
-                callback(null, allEmptyResults(entities));
-            } else {
-                callback(null, results);
-            }
+            callback(null, entity.data);
         });
+    });
 }
 
 function startup(logger) {
@@ -145,10 +176,33 @@ function validateStringOption(errors, options, optionName, errMessage) {
     }
 }
 
+function onMessage(payload, options, callback) {
+    let ro = {
+        url: `${options.url}/api/3/tags/${payload.tagId}/assets/${payload.assetId}`,
+        method: 'PUT',
+        auth: {
+            user: options.username,
+            password: options.password
+        },
+        json: true
+    };
+
+    Logger.trace('request options are: ', ro);
+
+    requestWithDefaults(ro, 200, (err) => {
+        if (err) {
+            callback(err);
+            return;
+        }
+
+        callback();
+    });
+}
+
 function validateOptions(options, callback) {
     let errors = [];
 
-    validateStringOption(errors, options, 'url', 'You must provide an example option.');
+    validateStringOption(errors, options, 'url', 'You must provide an example ');
     validateStringOption(errors, options, 'username', 'You must provide an example option.');
     validateStringOption(errors, options, 'password', 'You must provide an example option.');
 
@@ -157,6 +211,8 @@ function validateOptions(options, callback) {
 
 module.exports = {
     doLookup: doLookup,
+    onDetails: onDetails,
+    onMessage: onMessage,
     startup: startup,
     validateOptions: validateOptions
 };
