@@ -24,6 +24,12 @@ module.exports = {
      */
     description: "TODO nexpose integration description",
     entityTypes: ['ipv4'],
+    /*customTypes: [
+        {
+            key: 'cve',
+            regex: /CVE-\d{4}-\d{4,7}/
+        }
+    ],*/
     /**
      * An array of style files (css or less) that will be included for your integration. Any styles specified in
      * the below files can be used in your custom template.
