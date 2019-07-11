@@ -88,7 +88,7 @@ function lookupIPs(entities, options, callback) {
         callback(null, results);
     });
 }
-
+/*
 function pollForCompletedReport(iteration, reportUrl, options, callback) {
     Logger.trace('starting pool for completed report');
 
@@ -293,7 +293,7 @@ function cleanupReport(options, reportLink, cb) {
         cb(null);
     });
 }
-
+/*
 // This function validates that a CVE exists before trying to look it up
 // Because the CVE standard was created in 1999, we know that any CVE with 
 // a year entry of 1998 or earlier will not exist.  Likewise, a CVE with a 
@@ -306,7 +306,7 @@ function nonexistantCVE(entity) {
 
     return year < 1999 || year > new Date().getFullYear() + 1;
 }
-
+*/
 function doLookup(entities, options, callback) {
     Logger.trace('options are', options);
 
@@ -408,34 +408,61 @@ function validateStringOption(errors, options, optionName, errMessage) {
 }
 
 function onMessage(payload, options, callback) {
+    Logger.trace('onMessage invoked with payload ' + JSON.stringify(payload));
+
     let ro = {
-        url: `${options.url}/api/3/tags/${payload.tagId}/assets/${payload.assetId}`,
-        method: 'PUT',
+        json: true,
         auth: {
             user: options.username,
             password: options.password
-        },
-        json: true
-    };
-
-    Logger.trace('request options are: ', ro);
-
-    requestWithDefaults(ro, 200, (err) => {
-        if (err) {
-            callback(err);
-            return;
         }
+    }
+    if (payload.type === 'applyTag') {
+        ro.url = `${options.url}/api/3/tags/${payload.tagId}/assets/${payload.assetId}`;
+        ro.method = 'PUT';
 
-        callback();
-    });
+        Logger.trace('request options are: ', ro);
+
+        requestWithDefaults(ro, 200, (err) => {
+            if (err) {
+                Logger.error('error applying tag ', err);
+                callback(err);
+                return;
+            }
+
+            ro.url = payload.tagsLink;
+            ro.method = 'GET';
+
+            requestWithDefaults(ro, 200, (err, tags) => {
+                if (err) {
+                    Logger.error('error fetching all tags', err);
+                    callback(err);
+                    return;
+                }
+
+                Logger.trace('successfully re-fetched tags');
+
+                callback(null, tags.resources);
+            });
+        });
+    } else if (payload.type === 'rescanSite') {
+        ro.method = 'GET';
+        ro.url = `${options.url}/api/3/scans/${payload.scanId}`;
+
+        requestWithDefaults(ro, 200, (err, scan) => {
+            
+        });
+    } else {
+        console.error('invalid message');
+    }
 }
 
 function validateOptions(options, callback) {
     let errors = [];
 
-    validateStringOption(errors, options, 'url', 'You must provide an example ');
-    validateStringOption(errors, options, 'username', 'You must provide an example option.');
-    validateStringOption(errors, options, 'password', 'You must provide an example option.');
+    validateStringOption(errors, options, 'url', 'You must provide a url.');
+    validateStringOption(errors, options, 'username', 'You must provide a username.');
+    validateStringOption(errors, options, 'password', 'You must provide a password. ');
 
     callback(null, errors);
 }
