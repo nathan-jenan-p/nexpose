@@ -101,7 +101,7 @@ module.exports = {
         {
             key: "url",
             name: "Rapid7 Nexpose URL",
-            description: "example description of this option",
+            description: "URL to the Rapid7 Nexpose instance to use.",
             default: "",
             type: "text",
             userCanEdit: false,
@@ -110,7 +110,7 @@ module.exports = {
         {
             key: "username",
             name: "Username",
-            description: "example description of this option",
+            description: "Username to authenticate with Rapid7 Nexpose.",
             default: "",
             type: "text",
             userCanEdit: false,
@@ -119,9 +119,9 @@ module.exports = {
         {
             key: "password",
             name: "Password",
-            description: "example description of this option",
+            description: "Password associated with the username.",
             default: "",
-            type: "text",
+            type: "password",
             userCanEdit: false,
             adminOnly: true
         }
