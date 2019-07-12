@@ -19,7 +19,7 @@ polarity.export = PolarityComponent.extend({
 
             this.sendIntegrationMessage({ type: 'applyTag', assetId: assetId, tagId: tagId, tagsLink: tagsLink.href })
                 .then((tags) => {
-                    console.log('tag successfully added', tag);
+                    console.log('tag successfully added', tags);
                     
                     let details = self.get('block.data.details')
                     details.appliedTags = tags;
